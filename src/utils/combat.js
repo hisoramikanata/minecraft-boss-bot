@@ -47,6 +47,42 @@ async function shootAt(bot, target, chargeMs = 1000) {
   return true;
 }
 
+// 通常の敵Mob1体を、HP監視付きの接近戦で倒すまで戦う汎用ループ。
+// (ボス戦は無敵時間や特殊行動があるため個別モジュールで実装し、これは雑魚戦用)
+async function fightMob(bot, target, { log = () => {}, maxDurationMs = 40000 } = {}) {
+  if (!target) return;
+  await prepareForFight(bot);
+  const start = Date.now();
+  let retreating = false;
+
+  const stopWatch = watchHealth(bot, {
+    onLow: async () => {
+      if (retreating) return;
+      retreating = true;
+      disengage(bot);
+      setTimeout(() => { retreating = false; }, 2500);
+    },
+  });
+
+  try {
+    while (target.isValid && Date.now() - start < maxDurationMs) {
+      if (!retreating) {
+        engageMelee(bot, target);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  } finally {
+    stopWatch();
+    disengage(bot);
+  }
+
+  if (target.isValid) {
+    log(`${target.name} の討伐がタイムアウトしました。`);
+  } else {
+    log(`${target.name} を倒しました。`);
+  }
+}
+
 function nearestHostile(bot, predicate, maxDistance = 32) {
   const entities = Object.values(bot.entities);
   let nearest = null;
@@ -70,5 +106,6 @@ module.exports = {
   engageMelee,
   disengage,
   shootAt,
+  fightMob,
   nearestHostile,
 };

@@ -3,10 +3,12 @@ const wither = require('./bosses/wither');
 const enderDragon = require('./bosses/enderDragon');
 const warden = require('./bosses/warden');
 const { prepareForFight } = require('./utils/combat');
+const { runFullProgression } = require('./progression/runner');
 
 function registerCommands(bot) {
   let running = false;
   let currentLabel = null;
+  let cancelRequested = false;
 
   const say = (msg) => {
     console.log(`[bot] ${msg}`);
@@ -20,6 +22,7 @@ function registerCommands(bot) {
     }
     running = true;
     currentLabel = label;
+    cancelRequested = false;
     say(`${label} を開始します。`);
     try {
       await fn();
@@ -40,7 +43,15 @@ function registerCommands(bot) {
 
     switch (cmd) {
       case '!help':
-        say('コマンド: !gear / !fight wither|dragon|warden / !avoid warden / !stop / !status');
+        say('コマンド: !gear / !fight wither|dragon|warden / !avoid warden / !progress start / !stop / !status');
+        break;
+
+      case '!progress':
+        if (args[0] === 'start') {
+          runTask('フルサバイバル自動進行', () => runFullProgression(bot, say, () => cancelRequested));
+        } else {
+          say('使い方: !progress start (サバイバルを1から自動で進めます)');
+        }
         break;
 
       case '!gear':
@@ -75,12 +86,13 @@ function registerCommands(bot) {
         break;
 
       case '!stop':
+        // running/currentLabelはrunTaskのfinallyでクリアされるまで維持し、
+        // 実行中タスクの終了前に別タスクが多重起動しないようにする。
+        cancelRequested = true;
         if (bot.pvp) bot.pvp.stop();
         if (bot.pathfinder) bot.pathfinder.setGoal(null);
         bot.clearControlStates();
-        running = false;
-        currentLabel = null;
-        say('停止しました。');
+        say('停止を要求しました(区切りの良いところで進行を止めます)。');
         break;
 
       case '!status':
