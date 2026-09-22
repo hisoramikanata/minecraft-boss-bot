@@ -38,6 +38,33 @@ function materialNameForTier(bot, tier) {
   throw new Error(`未対応のtier: ${tier}`);
 }
 
+const TIER_ORDER = ['diamond', 'iron', 'stone', 'wooden']; // 上位(良い)順
+
+function hasMaterialFor(bot, tier) {
+  if (tier === 'wooden') return anyItemCount(bot, PLANK_NAMES) >= 3 || anyItemCount(bot, LOG_NAMES) >= 1;
+  if (tier === 'stone') return itemCount(bot, 'cobblestone') >= 3;
+  if (tier === 'iron') return itemCount(bot, 'iron_ingot') >= 3;
+  if (tier === 'diamond') return itemCount(bot, 'diamond') >= 3;
+  return false;
+}
+
+// 今の所持品で作れる中で最も上位のtierを返す(何も無ければfallbackTier)。
+function bestAvailableTier(bot, fallbackTier) {
+  for (const tier of TIER_ORDER) {
+    if (hasMaterialFor(bot, tier)) return tier;
+  }
+  return fallbackTier;
+}
+
+function hasToolAtLeast(bot, tool, minTier) {
+  const minIndex = TIER_ORDER.indexOf(minTier);
+  return TIER_ORDER.some((tier, index) => {
+    if (index > minIndex) return false; // minTierより下位は対象外
+    const prefix = tier === 'wooden' ? 'wooden' : tier;
+    return !!findItem(bot, `${prefix}_${tool}`);
+  });
+}
+
 // 指定tierの道具一式(つるはし/おの/剣/シャベル)を、材料がある分だけクラフトする。
 async function craftToolSet(bot, tier, log = () => {}) {
   await ensureSticks(bot, 8, log);
@@ -55,14 +82,16 @@ async function craftToolSet(bot, tier, log = () => {}) {
   }
 }
 
-// 指定tierの単一の道具(pickaxe/axe/sword/shovelのいずれか)が無ければ作り直す。
-// 採掘中に道具が壊れた場合の自動再クラフト用。
-async function ensureTool(bot, tier, tool, log = () => {}) {
-  const prefix = tier === 'wooden' ? 'wooden' : tier;
-  const itemName = `${prefix}_${tool}`;
-  if (findItem(bot, itemName)) return true;
+// 単一の道具(pickaxe/axe/sword/shovelのいずれか)がminTier以上で手元に無ければ、
+// 今の所持品で作れる最も上位のtierのものを作り直す(採掘中に道具が壊れた場合用)。
+async function ensureTool(bot, minTier, tool, log = () => {}) {
+  if (hasToolAtLeast(bot, tool, minTier)) return true;
 
-  log(`${itemName} が手元にありません。材料があれば作り直します。`);
+  const bestTier = bestAvailableTier(bot, minTier);
+  const prefix = bestTier === 'wooden' ? 'wooden' : bestTier;
+  const itemName = `${prefix}_${tool}`;
+
+  log(`${tool}が手元にありません。今ある最上位の素材(${bestTier})で作り直します。`);
   try {
     await ensureSticks(bot, 2, log);
     await craftItem(bot, itemName, 1, log);
@@ -88,5 +117,12 @@ async function craftArmorSet(bot, tier, log = () => {}) {
 }
 
 module.exports = {
-  craftToolSet, craftArmorSet, ensureTool, ensureSticks, ensurePlanks, materialNameForTier,
+  craftToolSet,
+  craftArmorSet,
+  ensureTool,
+  ensureSticks,
+  ensurePlanks,
+  materialNameForTier,
+  bestAvailableTier,
+  hasToolAtLeast,
 };
