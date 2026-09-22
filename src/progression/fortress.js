@@ -1,6 +1,7 @@
 const { nearestHostile, fightMob } = require('../utils/combat');
 const { goto } = require('../utils/navigation');
 const { itemCount } = require('./materials');
+const { throwIfCancelled } = require('./cancellation');
 
 const FORTRESS_BLOCKS = ['nether_bricks', 'nether_brick_fence', 'nether_brick_stairs', 'nether_brick_wall'];
 
@@ -16,6 +17,7 @@ async function locateFortress(bot, log = () => {}) {
   let found = findFortressBlock(bot);
   let attempts = 0;
   while (!found && attempts < 60) {
+    throwIfCancelled();
     attempts += 1;
     const angle = Math.random() * Math.PI * 2;
     const dist = 40;
@@ -48,6 +50,7 @@ async function collectSoulSand(bot, count, log = () => {}) {
   let collected = itemCount(bot, 'soul_sand') + itemCount(bot, 'soul_soil');
   let attempts = 0;
   while (collected < count && attempts < 60) {
+    throwIfCancelled();
     attempts += 1;
     const blocks = bot.findBlocks({
       matching: (b) => b && (b.name === 'soul_sand' || b.name === 'soul_soil'),
@@ -72,6 +75,7 @@ async function collectSoulSand(bot, count, log = () => {}) {
 async function collectWitherSkulls(bot, count, log = () => {}) {
   let attempts = 0;
   while (itemCount(bot, 'wither_skeleton_skull') < count && attempts < 200) {
+    throwIfCancelled();
     attempts += 1;
     const hunted = await huntMob(bot, 'wither_skeleton', log);
     if (!hunted) {
@@ -90,6 +94,7 @@ async function collectWitherSkulls(bot, count, log = () => {}) {
 async function collectBlazeRods(bot, count, log = () => {}) {
   let attempts = 0;
   while (itemCount(bot, 'blaze_rod') < count && attempts < 100) {
+    throwIfCancelled();
     attempts += 1;
     const hunted = await huntMob(bot, 'blaze', log);
     if (!hunted) {

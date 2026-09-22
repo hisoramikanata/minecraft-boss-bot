@@ -3,6 +3,7 @@ const { craftItem } = require('./craftingHelper');
 const { findItem, itemCount } = require('./materials');
 const { goto } = require('../utils/navigation');
 const { wander } = require('./woodcutting');
+const { throwIfCancelled } = require('./cancellation');
 
 const OBSIDIAN = 'obsidian';
 
@@ -19,6 +20,7 @@ async function mineNaturalObsidian(bot, count, log = () => {}) {
   let collected = 0;
   let attempts = 0;
   while (collected < count && attempts < 20) {
+    throwIfCancelled();
     attempts += 1;
     const blocks = findObsidian(bot, 48 + attempts * 16);
     if (blocks.length === 0) break;
@@ -44,6 +46,7 @@ async function farmObsidianFromLava(bot, count, log = () => {}) {
 
   let attempts = 0;
   while (itemCount(bot, OBSIDIAN) < count && attempts < 10) {
+    throwIfCancelled();
     attempts += 1;
     const lava = bot.findBlock({
       matching: (b) => b && b.name === 'lava',
@@ -103,6 +106,7 @@ function findGravel(bot, maxDistance = 48) {
 async function gatherFlint(bot, log = () => {}) {
   let attempts = 0;
   while (itemCount(bot, 'flint') < 1 && attempts < 40) {
+    throwIfCancelled();
     attempts += 1;
     const gravels = findGravel(bot);
     if (gravels.length === 0) {

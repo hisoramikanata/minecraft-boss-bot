@@ -2,6 +2,7 @@ const { nearestHostile, fightMob } = require('../utils/combat');
 const { goto } = require('../utils/navigation');
 const { craftItem } = require('./craftingHelper');
 const { itemCount } = require('./materials');
+const { throwIfCancelled } = require('./cancellation');
 
 function findEnderman(bot, maxDistance = 32) {
   return nearestHostile(bot, (e) => e.name === 'enderman', maxDistance);
@@ -11,6 +12,7 @@ function findEnderman(bot, maxDistance = 32) {
 async function collectEnderPearls(bot, count, log = () => {}) {
   let attempts = 0;
   while (itemCount(bot, 'ender_pearl') < count && attempts < 150) {
+    throwIfCancelled();
     attempts += 1;
     const target = findEnderman(bot);
     if (target) {

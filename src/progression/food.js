@@ -3,6 +3,7 @@ const { engageMelee, disengage, nearestHostile } = require('../utils/combat');
 const { goto, distanceTo } = require('../utils/navigation');
 const { smelt } = require('./smelting');
 const { wander } = require('./woodcutting');
+const { throwIfCancelled } = require('./cancellation');
 
 function findAnimal(bot) {
   return nearestHostile(bot, (e) => e.name && RAW_FOOD_ANIMALS.includes(e.name), 32);
@@ -45,6 +46,7 @@ async function ensureFood(bot, targetCookedCount, log = () => {}) {
   let attempts = 0;
 
   while (anyItemCount(bot, cookedNames) < targetCookedCount && attempts < 40) {
+    throwIfCancelled();
     attempts += 1;
     const hunted = await huntOne(bot, log);
     if (!hunted) {

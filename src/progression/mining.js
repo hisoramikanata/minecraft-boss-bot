@@ -1,5 +1,6 @@
 const { Vec3 } = require('vec3');
 const { goto } = require('../utils/navigation');
+const { throwIfCancelled } = require('./cancellation');
 
 // 掘削で移動する前に、進行方向・足元に溶岩/水がないか簡易チェックする。
 function isDangerousAt(bot, pos) {
@@ -63,6 +64,7 @@ async function mineOre(bot, oreBlockNames, targetCount, opts = {}, log = () => {
   let attempts = 0;
 
   while (collected < targetCount && attempts < maxAttempts) {
+    throwIfCancelled();
     attempts += 1;
     const positions = bot.findBlocks({
       matching: (block) => block && oreBlockNames.includes(block.name),

@@ -4,11 +4,11 @@ const enderDragon = require('./bosses/enderDragon');
 const warden = require('./bosses/warden');
 const { prepareForFight } = require('./utils/combat');
 const { runFullProgression } = require('./progression/runner');
+const cancellation = require('./progression/cancellation');
 
 function registerCommands(bot) {
   let running = false;
   let currentLabel = null;
-  let cancelRequested = false;
 
   const say = (msg) => {
     console.log(`[bot] ${msg}`);
@@ -22,13 +22,17 @@ function registerCommands(bot) {
     }
     running = true;
     currentLabel = label;
-    cancelRequested = false;
+    cancellation.resetCancel();
     say(`${label} を開始します。`);
     try {
       await fn();
     } catch (err) {
-      say(`${label} でエラー: ${err.message}`);
-      console.error(err);
+      if (err instanceof cancellation.CancelledError) {
+        say(`${label} を中断しました。`);
+      } else {
+        say(`${label} でエラー: ${err.message}`);
+        console.error(err);
+      }
     } finally {
       running = false;
       currentLabel = null;
@@ -48,7 +52,7 @@ function registerCommands(bot) {
 
       case '!progress':
         if (args[0] === 'start') {
-          runTask('フルサバイバル自動進行', () => runFullProgression(bot, say, () => cancelRequested));
+          runTask('フルサバイバル自動進行', () => runFullProgression(bot, say, cancellation.isCancelled));
         } else {
           say('使い方: !progress start (サバイバルを1から自動で進めます)');
         }
@@ -88,7 +92,7 @@ function registerCommands(bot) {
       case '!stop':
         // running/currentLabelはrunTaskのfinallyでクリアされるまで維持し、
         // 実行中タスクの終了前に別タスクが多重起動しないようにする。
-        cancelRequested = true;
+        cancellation.requestCancel();
         if (bot.pvp) bot.pvp.stop();
         if (bot.pathfinder) bot.pathfinder.setGoal(null);
         bot.clearControlStates();

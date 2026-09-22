@@ -16,6 +16,7 @@ const { locateAndActivateEndPortal } = require('./stronghold');
 const { goto } = require('../utils/navigation');
 const wither = require('../bosses/wither');
 const enderDragon = require('../bosses/enderDragon');
+const { CancelledError } = require('./cancellation');
 
 async function returnThroughPortal(bot, log = () => {}) {
   const startDim = bot.game.dimension;
@@ -152,6 +153,10 @@ async function runFullProgression(bot, log = () => {}, isCancelled = () => false
       await phase.run();
       log(`=== フェーズ完了: ${phase.name} ===`);
     } catch (err) {
+      if (err instanceof CancelledError) {
+        log('進行が中断されました。');
+        return;
+      }
       log(`フェーズ失敗「${phase.name}」: ${err.message}`);
       if (phase.required) {
         log('必須フェーズが失敗したため、自動進行を停止します。手動での介入が必要です。');

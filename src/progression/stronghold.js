@@ -1,6 +1,7 @@
 const { findItem, itemCount } = require('./materials');
 const { goto } = require('../utils/navigation');
 const { digIfSolid, isDangerousAt } = require('./mining');
+const { throwIfCancelled } = require('./cancellation');
 
 const EYE_ENTITY_NAMES = ['ender_eye', 'eye_of_ender', 'thrown_ender_eye'];
 const STRONGHOLD_BLOCKS = ['stone_bricks', 'cracked_stone_bricks', 'mossy_stone_bricks', 'chiseled_stone_bricks', 'stone_brick_stairs'];
@@ -51,6 +52,7 @@ async function approachStronghold(bot, log = () => {}) {
   let attempts = 0;
 
   while (attempts < 40) {
+    throwIfCancelled();
     attempts += 1;
     if (itemCount(bot, 'ender_eye') < 1) {
       throw new Error('エンダーの目を使い切りました。ストロングホールドに到達できませんでした。');
@@ -83,6 +85,7 @@ async function digDownToStronghold(bot, log = () => {}) {
   let pos = bot.entity.position.floored();
 
   while (pos.y > floorLimit) {
+    throwIfCancelled();
     const hit = bot.findBlock({
       matching: (b) => b && STRONGHOLD_BLOCKS.includes(b.name),
       maxDistance: 6,
@@ -118,6 +121,7 @@ async function exploreForPortalRoom(bot, log = () => {}) {
   let frame = findPortalFrame(bot);
   let attempts = 0;
   while (!frame && attempts < 80) {
+    throwIfCancelled();
     attempts += 1;
     const corridorBlock = bot.findBlock({
       matching: (b) => b && STRONGHOLD_BLOCKS.includes(b.name),
