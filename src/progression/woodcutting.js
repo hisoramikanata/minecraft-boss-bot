@@ -53,11 +53,24 @@ async function wander(bot) {
   } catch (_) { /* 到達不能な地形は無視して次の探索へ */ }
 }
 
-// 丸太を必要数プランクに変換する(既にあるプランクは考慮せず、指定本数分だけ変換)
+// 丸太を必要数プランクに変換する(既にあるプランクは考慮せず、指定本数分だけ変換)。
+// 木材の種類(oak/birch等)が混在している場合に備え、実際の所持数を超えないようにする。
 async function logsToPlanks(bot, logCount, log = () => {}) {
   const logItem = bot.inventory.items().find((i) => LOG_NAMES.includes(i.name));
   if (!logItem) throw new Error('丸太がありません');
-  await craftItem(bot, logItem.name.replace('_log', '_planks'), logCount, log);
+  const count = Math.min(logCount, logItem.count);
+  await craftItem(bot, logItem.name.replace('_log', '_planks'), count, log);
 }
 
-module.exports = { findLogs, gatherWood, logsToPlanks, wander, PLANK_NAMES };
+// 所持している丸太を、種類が混在していてもすべて板材に変換する。
+async function convertAllLogsToPlanks(bot, log = () => {}) {
+  let logItem = bot.inventory.items().find((i) => LOG_NAMES.includes(i.name));
+  while (logItem) {
+    await logsToPlanks(bot, logItem.count, log);
+    logItem = bot.inventory.items().find((i) => LOG_NAMES.includes(i.name));
+  }
+}
+
+module.exports = {
+  findLogs, gatherWood, logsToPlanks, convertAllLogsToPlanks, wander, PLANK_NAMES,
+};

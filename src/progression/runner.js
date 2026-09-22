@@ -1,4 +1,4 @@
-const { gatherWood } = require('./woodcutting');
+const { gatherWood, convertAllLogsToPlanks } = require('./woodcutting');
 const { ensureCraftingTable } = require('./craftingHelper');
 const { ensureChest } = require('./chest');
 const { craftToolSet, craftArmorSet } = require('./toolProgression');
@@ -48,6 +48,8 @@ function buildPhases(bot, log) {
       required: true,
       run: async () => {
         await gatherWood(bot, 16, log);
+        // クラフトテーブル等を作る前に、集めた丸太を先に板材へ変換しておく
+        await convertAllLogsToPlanks(bot, log);
         await ensureCraftingTable(bot, log);
         await craftToolSet(bot, 'wooden', log);
         await ensureChest(bot, log);
