@@ -43,6 +43,7 @@ async function returnThroughPortal(bot, log = () => {}) {
 function buildPhases(bot, log) {
   return [
     {
+      key: 'wood',
       name: '木材確保・初期装備',
       required: true,
       run: async () => {
@@ -53,6 +54,7 @@ function buildPhases(bot, log) {
       },
     },
     {
+      key: 'stone',
       name: '石材採掘・石器化',
       required: true,
       run: async () => {
@@ -61,11 +63,13 @@ function buildPhases(bot, log) {
       },
     },
     {
+      key: 'food',
       name: '食料確保(序盤)',
       required: false,
       run: async () => { await ensureFood(bot, 6, log); },
     },
     {
+      key: 'ironore',
       name: '石炭・鉄採掘',
       required: true,
       run: async () => {
@@ -74,6 +78,7 @@ function buildPhases(bot, log) {
       },
     },
     {
+      key: 'iron',
       name: '鉄の精錬・鉄器化',
       required: true,
       run: async () => {
@@ -85,6 +90,7 @@ function buildPhases(bot, log) {
       },
     },
     {
+      key: 'diamond',
       name: 'ダイヤモンド採掘・装備強化',
       required: true,
       run: async () => {
@@ -94,16 +100,19 @@ function buildPhases(bot, log) {
       },
     },
     {
+      key: 'village',
       name: '村を訪問',
       required: false,
       run: async () => { await travelToStructure(bot, '#minecraft:village', log); },
     },
     {
+      key: 'portal',
       name: '荒廃したポータル探索・ネザー突入',
       required: true,
       run: async () => { await buildAndEnterPortal(bot, log); },
     },
     {
+      key: 'fortress',
       name: 'ネザー要塞探索・資材収集',
       required: true,
       run: async () => {
@@ -114,31 +123,37 @@ function buildPhases(bot, log) {
       },
     },
     {
+      key: 'wither',
       name: 'ウィザー討伐',
       required: false,
       run: async () => { await wither.fight(bot, log); },
     },
     {
+      key: 'return',
       name: 'オーバーワールドへ帰還',
       required: true,
       run: async () => { await returnThroughPortal(bot, log); },
     },
     {
+      key: 'pearls',
       name: 'エンダーパール収集',
       required: true,
       run: async () => { await collectEnderPearls(bot, 14, log); },
     },
     {
+      key: 'eyes',
       name: 'エンダーの目 作成',
       required: true,
       run: async () => { await craftEyesOfEnder(bot, 14, log); },
     },
     {
+      key: 'stronghold',
       name: 'ストロングホールド到達・エンド突入',
       required: true,
       run: async () => { await locateAndActivateEndPortal(bot, log); },
     },
     {
+      key: 'dragon',
       name: 'エンダードラゴン討伐',
       required: true,
       run: async () => { await enderDragon.fight(bot, log); },
@@ -146,10 +161,26 @@ function buildPhases(bot, log) {
   ];
 }
 
+// フェーズ一覧をチャット表示用に整形する。
+function listPhaseKeys(bot, log) {
+  return buildPhases(bot, log).map((p) => `${p.key}(${p.name})`).join(', ');
+}
+
 // サバイバル1からボス討伐までを一括で実行する。各フェーズは順番に実行され、
 // requiredなフェーズで失敗すると全体を停止する。
-async function runFullProgression(bot, log = () => {}, isCancelled = () => false) {
-  const phases = buildPhases(bot, log);
+// startAtを指定すると、そのkeyのフェーズから開始する(既に装備が揃っている場合の再開用)。
+async function runFullProgression(bot, log = () => {}, isCancelled = () => false, startAt = null) {
+  let phases = buildPhases(bot, log);
+
+  if (startAt) {
+    const startIndex = phases.findIndex((p) => p.key === startAt);
+    if (startIndex === -1) {
+      log(`不明な開始フェーズ「${startAt}」です。指定できるのは: ${listPhaseKeys(bot, log)}`);
+      return;
+    }
+    phases = phases.slice(startIndex);
+    log(`「${phases[0].name}」フェーズから開始します。`);
+  }
 
   for (const phase of phases) {
     if (isCancelled()) {
@@ -177,4 +208,4 @@ async function runFullProgression(bot, log = () => {}, isCancelled = () => false
   log('全フェーズが完了しました(達成できなかった任意フェーズがある可能性があります)。');
 }
 
-module.exports = { runFullProgression, returnThroughPortal };
+module.exports = { runFullProgression, returnThroughPortal, listPhaseKeys };

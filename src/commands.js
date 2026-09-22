@@ -3,7 +3,7 @@ const wither = require('./bosses/wither');
 const enderDragon = require('./bosses/enderDragon');
 const warden = require('./bosses/warden');
 const { prepareForFight } = require('./utils/combat');
-const { runFullProgression } = require('./progression/runner');
+const { runFullProgression, listPhaseKeys } = require('./progression/runner');
 const cancellation = require('./progression/cancellation');
 
 const CHAT_INTERVAL_MS = 1200; // これより速く送ると多くのサーバーでスパム判定・キックされる
@@ -70,14 +70,17 @@ function registerCommands(bot) {
 
     switch (cmd) {
       case '!help':
-        say('コマンド: !gear / !fight wither|dragon|warden / !avoid warden / !progress start / !stop / !status');
+        say('コマンド: !gear / !fight wither|dragon|warden / !avoid warden / !progress start [フェーズ名] / !progress phases / !stop / !status');
         break;
 
       case '!progress':
         if (args[0] === 'start') {
-          runTask('フルサバイバル自動進行', () => runFullProgression(bot, say, cancellation.isCancelled));
+          const startAt = args[1] || null;
+          runTask('フルサバイバル自動進行', () => runFullProgression(bot, say, cancellation.isCancelled, startAt));
+        } else if (args[0] === 'phases') {
+          say(`フェーズ一覧: ${listPhaseKeys(bot, say)}`);
         } else {
-          say('使い方: !progress start (サバイバルを1から自動で進めます)');
+          say('使い方: !progress start [開始フェーズ名] / !progress phases (フェーズ一覧表示)');
         }
         break;
 
