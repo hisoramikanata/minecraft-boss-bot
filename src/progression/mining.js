@@ -2,6 +2,7 @@ const { Vec3 } = require('vec3');
 const { goto } = require('../utils/navigation');
 const { throwIfCancelled } = require('./cancellation');
 const { ensureTool } = require('./toolProgression');
+const { makeRoom } = require('./chest');
 
 const TOOL_CHECK_INTERVAL = 5; // 何回の採掘試行ごとに道具切れを確認するか
 
@@ -76,6 +77,7 @@ async function mineOre(bot, oreBlockNames, targetCount, opts = {}, log = () => {
     if (toolTier && attempts % TOOL_CHECK_INTERVAL === 0) {
       await ensureTool(bot, toolTier, 'pickaxe', log);
     }
+    await makeRoom(bot, log);
     const positions = bot.findBlocks({
       matching: (block) => block && oreBlockNames.includes(block.name),
       maxDistance: 48,

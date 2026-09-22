@@ -2,6 +2,7 @@ const { nearestHostile, fightMob } = require('../utils/combat');
 const { goto } = require('../utils/navigation');
 const { itemCount } = require('./materials');
 const { throwIfCancelled } = require('./cancellation');
+const { makeRoom } = require('./chest');
 
 const FORTRESS_BLOCKS = ['nether_bricks', 'nether_brick_fence', 'nether_brick_stairs', 'nether_brick_wall'];
 
@@ -64,6 +65,7 @@ async function collectSoulSand(bot, count, log = () => {}) {
       await goto(bot, target, 4).catch(() => {});
       continue;
     }
+    await makeRoom(bot, log);
     await bot.collectBlock.collect(blocks, { ignoreNoPath: true }).catch(() => {});
     collected = itemCount(bot, 'soul_sand') + itemCount(bot, 'soul_soil');
     log(`ソウルサンド/ソウルソイル: ${collected}/${count}`);
