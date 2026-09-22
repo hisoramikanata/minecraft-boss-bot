@@ -180,6 +180,11 @@ async function runFullProgression(bot, log = () => {}, isCancelled = () => false
     }
     phases = phases.slice(startIndex);
     log(`「${phases[0].name}」フェーズから開始します。`);
+    if (phases[0].key !== 'wood') {
+      // 木材フェーズを飛ばすとチェスト未設定のままcollectblockが預け先を探して
+      // 失敗し続けるため、開始前に今の所持品でチェスト設置を試みておく。
+      await ensureChest(bot, log);
+    }
   }
 
   for (const phase of phases) {
