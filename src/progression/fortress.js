@@ -1,5 +1,5 @@
 const { nearestHostile, fightMob } = require('../utils/combat');
-const { goto } = require('../utils/navigation');
+const { goto, gotoOrDigDown } = require('../utils/navigation');
 const { itemCount } = require('./materials');
 const { throwIfCancelled } = require('./cancellation');
 const { makeRoom } = require('./chest');
@@ -25,7 +25,7 @@ async function locateFortress(bot, log = () => {}) {
     const target = bot.entity.position.offset(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
     log(`要塞を探索中... (試行 ${attempts})`);
     try {
-      await goto(bot, target, 4);
+      await gotoOrDigDown(bot, target, 4);
     } catch (_) { /* 到達不能地形は無視 */ }
     found = findFortressBlock(bot, 96);
   }
@@ -62,7 +62,7 @@ async function collectSoulSand(bot, count, log = () => {}) {
     if (blocks.length === 0) {
       const angle = Math.random() * Math.PI * 2;
       const target = bot.entity.position.offset(Math.cos(angle) * 30, 0, Math.sin(angle) * 30);
-      await goto(bot, target, 4).catch(() => {});
+      await gotoOrDigDown(bot, target, 4).catch(() => {});
       continue;
     }
     await makeRoom(bot, log);
@@ -83,7 +83,7 @@ async function collectWitherSkulls(bot, count, log = () => {}) {
     if (!hunted) {
       const angle = Math.random() * Math.PI * 2;
       const target = bot.entity.position.offset(Math.cos(angle) * 25, 0, Math.sin(angle) * 25);
-      await goto(bot, target, 4).catch(() => {});
+      await gotoOrDigDown(bot, target, 4).catch(() => {});
     }
     log(`頭骨: ${itemCount(bot, 'wither_skeleton_skull')}/${count} (討伐試行 ${attempts})`);
   }
@@ -102,7 +102,7 @@ async function collectBlazeRods(bot, count, log = () => {}) {
     if (!hunted) {
       const angle = Math.random() * Math.PI * 2;
       const target = bot.entity.position.offset(Math.cos(angle) * 20, 0, Math.sin(angle) * 20);
-      await goto(bot, target, 4).catch(() => {});
+      await gotoOrDigDown(bot, target, 4).catch(() => {});
     }
     log(`ブレイズロッド: ${itemCount(bot, 'blaze_rod')}/${count}`);
   }

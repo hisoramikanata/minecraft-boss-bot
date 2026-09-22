@@ -1,6 +1,6 @@
 const { LOG_NAMES, PLANK_NAMES, anyItemCount } = require('./materials');
 const { craftItem } = require('./craftingHelper');
-const { goto } = require('../utils/navigation');
+const { gotoOrDigDown } = require('../utils/navigation');
 const { throwIfCancelled } = require('./cancellation');
 const { waitUntilCombatClear } = require('../utils/combatLock');
 
@@ -49,7 +49,7 @@ async function wander(bot) {
     Math.sin(angle) * dist,
   );
   try {
-    await goto(bot, target, 3);
+    await gotoOrDigDown(bot, target, 3);
   } catch (_) { /* 到達不能な地形は無視して次の探索へ */ }
 }
 

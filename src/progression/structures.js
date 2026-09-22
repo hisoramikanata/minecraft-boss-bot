@@ -1,5 +1,5 @@
 const { Vec3 } = require('vec3');
-const { goto } = require('../utils/navigation');
+const { gotoOrDigDown } = require('../utils/navigation');
 const { throwIfCancelled } = require('./cancellation');
 
 function parseCoordinates(text) {
@@ -44,7 +44,7 @@ async function travelTo(bot, target, log = () => {}, stepDistance = 200) {
     const waypoint = bot.entity.position.plus(dir.scale(step));
     log(`目的地へ移動中(残り約${Math.round(remaining)}ブロック)`);
     try {
-      await goto(bot, waypoint, 6);
+      await gotoOrDigDown(bot, waypoint, 6);
     } catch (err) {
       log(`移動に失敗、ルートを再検討します: ${err.message}`);
     }
