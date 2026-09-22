@@ -1,5 +1,6 @@
 const { gatherWood } = require('./woodcutting');
 const { ensureCraftingTable } = require('./craftingHelper');
+const { ensureChest } = require('./chest');
 const { craftToolSet, craftArmorSet } = require('./toolProgression');
 const { mineOre } = require('./mining');
 const { smelt } = require('./smelting');
@@ -47,13 +48,14 @@ function buildPhases(bot, log) {
         await gatherWood(bot, 16, log);
         await ensureCraftingTable(bot, log);
         await craftToolSet(bot, 'wooden', log);
+        await ensureChest(bot, log);
       },
     },
     {
       name: '石材採掘・石器化',
       required: true,
       run: async () => {
-        await mineOre(bot, ['stone', 'cobblestone', 'deepslate'], 24, { minY: 0, maxY: 64 }, log);
+        await mineOre(bot, ['stone', 'cobblestone', 'deepslate'], 24, { minY: 0, maxY: 64, toolTier: 'wooden' }, log);
         await craftToolSet(bot, 'stone', log);
       },
     },
@@ -66,8 +68,8 @@ function buildPhases(bot, log) {
       name: '石炭・鉄採掘',
       required: true,
       run: async () => {
-        await mineOre(bot, COAL_ORE, 8, { minY: -16, maxY: 96 }, log);
-        await mineOre(bot, IRON_ORE, 16, { minY: -16, maxY: 64 }, log);
+        await mineOre(bot, COAL_ORE, 8, { minY: -16, maxY: 96, toolTier: 'wooden' }, log);
+        await mineOre(bot, IRON_ORE, 16, { minY: -16, maxY: 64, toolTier: 'stone' }, log);
       },
     },
     {
@@ -85,7 +87,7 @@ function buildPhases(bot, log) {
       name: 'ダイヤモンド採掘・装備強化',
       required: true,
       run: async () => {
-        await mineOre(bot, DIAMOND_ORE, 10, { minY: -64, maxY: -8 }, log);
+        await mineOre(bot, DIAMOND_ORE, 10, { minY: -64, maxY: -8, toolTier: 'iron' }, log);
         await craftToolSet(bot, 'diamond', log);
         await craftArmorSet(bot, 'diamond', log);
       },

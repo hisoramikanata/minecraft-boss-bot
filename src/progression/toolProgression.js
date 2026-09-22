@@ -55,6 +55,24 @@ async function craftToolSet(bot, tier, log = () => {}) {
   }
 }
 
+// 指定tierの単一の道具(pickaxe/axe/sword/shovelのいずれか)が無ければ作り直す。
+// 採掘中に道具が壊れた場合の自動再クラフト用。
+async function ensureTool(bot, tier, tool, log = () => {}) {
+  const prefix = tier === 'wooden' ? 'wooden' : tier;
+  const itemName = `${prefix}_${tool}`;
+  if (findItem(bot, itemName)) return true;
+
+  log(`${itemName} が手元にありません。材料があれば作り直します。`);
+  try {
+    await ensureSticks(bot, 2, log);
+    await craftItem(bot, itemName, 1, log);
+    return true;
+  } catch (err) {
+    log(`${itemName} の再クラフトに失敗: ${err.message}`);
+    return false;
+  }
+}
+
 // 指定tierの防具一式を、材料がある分だけクラフトする。
 async function craftArmorSet(bot, tier, log = () => {}) {
   if (tier === 'wooden') return; // 木の防具は存在しないためスキップ
@@ -70,5 +88,5 @@ async function craftArmorSet(bot, tier, log = () => {}) {
 }
 
 module.exports = {
-  craftToolSet, craftArmorSet, ensureSticks, ensurePlanks, materialNameForTier,
+  craftToolSet, craftArmorSet, ensureTool, ensureSticks, ensurePlanks, materialNameForTier,
 };

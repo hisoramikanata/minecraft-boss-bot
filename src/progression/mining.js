@@ -1,6 +1,9 @@
 const { Vec3 } = require('vec3');
 const { goto } = require('../utils/navigation');
 const { throwIfCancelled } = require('./cancellation');
+const { ensureTool } = require('./toolProgression');
+
+const TOOL_CHECK_INTERVAL = 5; // 何回の採掘試行ごとに道具切れを確認するか
 
 // 掘削で移動する前に、進行方向・足元に溶岩/水がないか簡易チェックする。
 function isDangerousAt(bot, pos) {
@@ -59,13 +62,20 @@ async function tunnelSideways(bot, log = () => {}) {
 
 // 指定した鉱石ブロック群を目標個数だけ採掘する。見つからなければ目標Y帯へ移動しつつトンネルを掘る。
 async function mineOre(bot, oreBlockNames, targetCount, opts = {}, log = () => {}) {
-  const { minY = -59, maxY = 16, maxAttempts = 400 } = opts;
+  const {
+    minY = -59, maxY = 16, maxAttempts = 400, toolTier = null,
+  } = opts;
   let collected = 0;
   let attempts = 0;
+
+  if (toolTier) await ensureTool(bot, toolTier, 'pickaxe', log);
 
   while (collected < targetCount && attempts < maxAttempts) {
     throwIfCancelled();
     attempts += 1;
+    if (toolTier && attempts % TOOL_CHECK_INTERVAL === 0) {
+      await ensureTool(bot, toolTier, 'pickaxe', log);
+    }
     const positions = bot.findBlocks({
       matching: (block) => block && oreBlockNames.includes(block.name),
       maxDistance: 48,
