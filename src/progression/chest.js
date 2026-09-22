@@ -1,6 +1,7 @@
 const { placeNearBot } = require('./placement');
 const { craftItem } = require('./craftingHelper');
-const { findItem, itemCount } = require('./materials');
+const { findItem } = require('./materials');
+const { ensurePlanks } = require('./toolProgression');
 
 function findNearbyChest(bot, maxDistance = 16) {
   return bot.findBlock({
@@ -17,9 +18,12 @@ async function ensureChest(bot, log = () => {}) {
 
   if (!chest) {
     if (!findItem(bot, 'chest')) {
-      if (itemCount(bot, 'planks') < 8 && itemCount(bot, 'oak_planks') < 8) {
-        // 板材が無ければ何もしない(チェスト無しでも進行は継続できる)
-        log('チェスト用の板材が不足しているため、チェスト設置はスキップします。');
+      try {
+        // 木材の種類(oak/birch等)を問わず、板材が8枚未満なら丸太から変換する
+        await ensurePlanks(bot, 8, log);
+      } catch (err) {
+        // 板材/丸太が無ければ何もしない(チェスト無しでも進行は継続できる)
+        log(`チェスト用の板材が不足しているため、チェスト設置はスキップします: ${err.message}`);
         return null;
       }
       try {
