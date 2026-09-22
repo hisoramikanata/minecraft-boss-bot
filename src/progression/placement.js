@@ -89,6 +89,29 @@ async function placeNearBot(bot, itemName, log = () => {}) {
       console.log(`[placeNearBot] ${pos} への設置に失敗: ${err.message}`);
     }
   }
+
+  // 採掘トンネルの中など、周囲が全て岩壁で置く隙間が無い場合の最終手段。
+  // 足元の横のブロックを1つ掘って空間を作ってから、そこに設置する。
+  if (standingBlock && standingBlock.boundingBox === 'block') {
+    const item = bot.inventory.items().find((i) => i.name === itemName);
+    const digFaces = [new Vec3(1, 0, 0), new Vec3(-1, 0, 0), new Vec3(0, 0, 1), new Vec3(0, 0, -1)];
+    if (item) {
+      for (const face of digFaces) {
+        const destPos = standingBlock.position.plus(face);
+        const destBlock = bot.blockAt(destPos);
+        if (!destBlock || destBlock.boundingBox !== 'block' || !destBlock.diggable) continue;
+        try {
+          await bot.dig(destBlock);
+          await bot.equip(item, 'hand');
+          await bot.placeBlock(standingBlock, face);
+          return bot.blockAt(destPos);
+        } catch (err) {
+          console.log(`[placeNearBot] ${destPos} を掘っての設置に失敗: ${err.message}`);
+        }
+      }
+    }
+  }
+
   log(`${itemName} を設置できる場所が周囲に見つかりません`);
   throw new Error(`${itemName} を設置できる場所が周囲に見つかりません`);
 }
