@@ -1,5 +1,5 @@
 const { goto } = require('../utils/navigation');
-const { placeAt } = require('./placement');
+const { placeNearBot } = require('./placement');
 const { PLANK_NAMES, findItem } = require('./materials');
 
 function findNearbyTable(bot) {
@@ -21,10 +21,7 @@ async function ensureCraftingTable(bot, log = () => {}) {
     if (!tableItem) throw new Error('クラフトテーブルを作成できません(木材不足)');
   }
 
-  const feet = bot.entity.position.floored();
-  const placePos = feet.offset(1, 0, 0);
-  await placeAt(bot, placePos, 'crafting_table');
-  table = bot.blockAt(placePos);
+  table = await placeNearBot(bot, 'crafting_table', log);
   return table;
 }
 
@@ -46,10 +43,7 @@ async function ensureFurnace(bot, log = () => {}) {
     if (!furnaceItem) throw new Error('かまどを作成できません(丸石不足)');
   }
 
-  const feet = bot.entity.position.floored();
-  const placePos = feet.offset(-1, 0, 0);
-  await placeAt(bot, placePos, 'furnace');
-  furnace = bot.blockAt(placePos);
+  furnace = await placeNearBot(bot, 'furnace', log);
   return furnace;
 }
 

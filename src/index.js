@@ -25,6 +25,8 @@ function createBot() {
   bot.loadPlugin(autoEat);
   bot.loadPlugin(collectBlock);
 
+  let wardenSafetyInterval = null;
+
   bot.once('spawn', () => {
     const movements = new Movements(bot);
     movements.canDig = true;
@@ -45,13 +47,15 @@ function createBot() {
 
     // ウォーデンは常時オートセーフティとして自動回避を監視する(AVOID_ONLYに関わらず有効)
     if (config.wardenAvoidOnly) {
-      startWardenSafety(bot);
+      wardenSafetyInterval = startWardenSafety(bot);
     }
   });
 
   bot.on('kicked', (reason) => console.log('[bot] kicked:', reason));
   bot.on('error', (err) => console.log('[bot] error:', err.message));
   bot.on('end', (reason) => {
+    // 再接続のたびにintervalが積み重なりメモリリークになるため、切断時に必ず止める
+    if (wardenSafetyInterval) clearInterval(wardenSafetyInterval);
     console.log('[bot] disconnected:', reason, '- 5秒後に再接続します');
     setTimeout(createBot, 5000);
   });
@@ -61,7 +65,7 @@ function createBot() {
 
 function startWardenSafety(bot) {
   let handling = false;
-  setInterval(async () => {
+  return setInterval(async () => {
     if (handling) return;
     const target = warden.findWarden(bot);
     if (!target) return;

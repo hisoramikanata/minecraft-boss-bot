@@ -41,8 +41,8 @@ function materialNameForTier(bot, tier) {
 // 指定tierの道具一式(つるはし/おの/剣/シャベル)を、材料がある分だけクラフトする。
 async function craftToolSet(bot, tier, log = () => {}) {
   await ensureSticks(bot, 8, log);
-  const material = materialNameForTier(bot, tier);
-  const prefix = tier === 'wooden' ? material.replace('_planks', '') : tier;
+  // 木材種類(oak/birch等)に関わらず、木の道具は常に"wooden_"接頭辞になる
+  const prefix = tier === 'wooden' ? 'wooden' : tier;
 
   for (const tool of TOOLS) {
     const itemName = `${prefix}_${tool}`;
