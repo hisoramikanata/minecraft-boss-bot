@@ -29,6 +29,8 @@ function createBot() {
     const movements = new Movements(bot);
     movements.canDig = true;
     bot.pathfinder.setMovements(movements);
+    // デフォルト5秒だと複雑な地形で経路探索がタイムアウトしやすいため延長する
+    bot.pathfinder.thinkTimeout = 20000;
 
     if (bot.autoEat) {
       bot.autoEat.options = {

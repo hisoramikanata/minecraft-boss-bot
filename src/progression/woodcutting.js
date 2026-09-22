@@ -24,7 +24,11 @@ async function gatherWood(bot, targetLogCount, log = () => {}) {
       continue;
     }
     log(`丸太を採取します (${logs.length}本発見)`);
-    await bot.collectBlock.collect(logs, { ignoreNoPath: true });
+    try {
+      await bot.collectBlock.collect(logs[0], { ignoreNoPath: true });
+    } catch (err) {
+      log(`丸太の採取に失敗、別の木を試します: ${err.message}`);
+    }
   }
 
   const have = anyItemCount(bot, LOG_NAMES);
