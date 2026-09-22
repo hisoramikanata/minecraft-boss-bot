@@ -6,13 +6,36 @@ const { prepareForFight } = require('./utils/combat');
 const { runFullProgression } = require('./progression/runner');
 const cancellation = require('./progression/cancellation');
 
+const CHAT_INTERVAL_MS = 1200; // これより速く送ると多くのサーバーでスパム判定・キックされる
+const CHAT_QUEUE_MAX = 20; // 採掘ループ等で大量にログが出ても際限なく溜め込まないための上限
+
 function registerCommands(bot) {
   let running = false;
   let currentLabel = null;
+  const chatQueue = [];
+  let chatTimer = null;
 
+  const flushChatQueue = () => {
+    const msg = chatQueue.shift();
+    if (msg !== undefined) {
+      try { bot.chat(msg); } catch (_) { /* サーバー未接続時などは無視 */ }
+    }
+    if (chatQueue.length === 0) {
+      clearInterval(chatTimer);
+      chatTimer = null;
+    }
+  };
+
+  // コンソールには全件即時出力しつつ、チャットへの送信は一定間隔に間引いて
+  // アンチスパムによるキックを防ぐ。長い採掘ループ等で溜まりすぎないよう上限も設ける。
   const say = (msg) => {
     console.log(`[bot] ${msg}`);
-    try { bot.chat(msg); } catch (_) { /* サーバー未接続時などは無視 */ }
+    chatQueue.push(msg);
+    if (chatQueue.length > CHAT_QUEUE_MAX) chatQueue.shift();
+    if (!chatTimer) {
+      flushChatQueue();
+      chatTimer = setInterval(flushChatQueue, CHAT_INTERVAL_MS);
+    }
   };
 
   async function runTask(label, fn) {

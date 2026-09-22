@@ -42,12 +42,40 @@ async function placeAt(bot, pos, itemName) {
 }
 
 // bot周辺の複数候補地点から、設置可能な(空いていて隣接ブロックがある)場所を探して設置する。
+// 採掘直後などで足元が掘り返されている場合に備え、まず「今立っている足場」を直接の
+// 設置基準にする方式を優先する(最も確実)。それでもダメなら周辺の候補地点を試す。
+// 失敗のたびにチャットへログを送るとスパム判定でキックされるため、途中経過はコンソール
+// のみに出し、チャットには最終結果だけ流す。
 async function placeNearBot(bot, itemName, log = () => {}) {
+  const standingBlock = bot.blockAt(bot.entity.position.floored().offset(0, -1, 0));
+
+  if (standingBlock && standingBlock.boundingBox === 'block') {
+    const faces = [
+      new Vec3(1, 0, 0), new Vec3(-1, 0, 0), new Vec3(0, 0, 1), new Vec3(0, 0, -1), new Vec3(0, 1, 0),
+    ];
+    const item = bot.inventory.items().find((i) => i.name === itemName);
+    if (item) {
+      for (const face of faces) {
+        const destPos = standingBlock.position.plus(face);
+        const destBlock = bot.blockAt(destPos);
+        if (!isReplaceable(destBlock)) continue;
+        try {
+          await bot.pathfinder.goto(new goals.GoalNear(destPos.x, destPos.y, destPos.z, 3));
+          await bot.equip(item, 'hand');
+          await bot.placeBlock(standingBlock, face);
+          return bot.blockAt(destPos);
+        } catch (err) {
+          console.log(`[placeNearBot] ${destPos} への設置に失敗: ${err.message}`);
+        }
+      }
+    }
+  }
+
   const feet = bot.entity.position.floored();
   const candidates = [
     feet.offset(1, 0, 0), feet.offset(-1, 0, 0), feet.offset(0, 0, 1), feet.offset(0, 0, -1),
     feet.offset(1, 0, 1), feet.offset(1, 0, -1), feet.offset(-1, 0, 1), feet.offset(-1, 0, -1),
-    feet.offset(2, 0, 0), feet.offset(0, 0, 2),
+    feet.offset(2, 0, 0), feet.offset(0, 0, 2), feet.offset(-2, 0, 0), feet.offset(0, 0, -2),
   ];
 
   for (const pos of candidates) {
@@ -58,9 +86,10 @@ async function placeNearBot(bot, itemName, log = () => {}) {
       await placeAt(bot, pos, itemName);
       return bot.blockAt(pos);
     } catch (err) {
-      log(`${pos} への設置に失敗、別の場所を試します: ${err.message}`);
+      console.log(`[placeNearBot] ${pos} への設置に失敗: ${err.message}`);
     }
   }
+  log(`${itemName} を設置できる場所が周囲に見つかりません`);
   throw new Error(`${itemName} を設置できる場所が周囲に見つかりません`);
 }
 
