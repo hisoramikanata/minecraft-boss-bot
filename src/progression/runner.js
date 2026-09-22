@@ -9,6 +9,7 @@ const {
   COAL_ORE, IRON_ORE, DIAMOND_ORE, findItem, itemCount,
 } = require('./materials');
 const { buildAndEnterPortal } = require('./netherPortal');
+const { travelToStructure } = require('./structures');
 const {
   locateFortress, collectSoulSand, collectBlazeRods, collectWitherSkulls,
 } = require('./fortress');
@@ -93,7 +94,12 @@ function buildPhases(bot, log) {
       },
     },
     {
-      name: 'ネザーポータル建築・突入',
+      name: '村を訪問',
+      required: false,
+      run: async () => { await travelToStructure(bot, '#minecraft:village', log); },
+    },
+    {
+      name: '荒廃したポータル探索・ネザー突入',
       required: true,
       run: async () => { await buildAndEnterPortal(bot, log); },
     },

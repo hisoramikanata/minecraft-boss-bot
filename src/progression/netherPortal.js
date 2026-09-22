@@ -4,6 +4,7 @@ const { findItem, itemCount } = require('./materials');
 const { goto } = require('../utils/navigation');
 const { wander } = require('./woodcutting');
 const { throwIfCancelled } = require('./cancellation');
+const { travelToStructure } = require('./structures');
 
 const OBSIDIAN = 'obsidian';
 
@@ -163,15 +164,20 @@ async function buildFrame(bot, log = () => {}) {
   return { base, width, height, igniteAt: base.offset(1, 1, 0) };
 }
 
-async function ignitePortal(bot, frame, log = () => {}) {
+// 黒曜石ブロック1つを対象にフリント&スチールで着火する共通処理。
+async function igniteFrame(bot, targetBlock, standNear, log = () => {}) {
   await ensureFlintAndSteel(bot, log);
   const flintAndSteel = findItem(bot, 'flint_and_steel');
   await bot.equip(flintAndSteel, 'hand');
-  const targetBlock = bot.blockAt(frame.base.offset(0, 1, 0));
-  await goto(bot, frame.igniteAt, 2);
+  await goto(bot, standNear, 2);
   await bot.lookAt(targetBlock.position.offset(0.5, 0.5, 0.5), true);
   await bot.activateBlock(targetBlock);
   log('ポータルに着火しました。');
+}
+
+async function ignitePortal(bot, frame, log = () => {}) {
+  const targetBlock = bot.blockAt(frame.base.offset(0, 1, 0));
+  await igniteFrame(bot, targetBlock, frame.igniteAt, log);
 }
 
 async function enterPortal(bot, frame, log = () => {}) {
@@ -190,14 +196,113 @@ async function enterPortal(bot, frame, log = () => {}) {
   log(`次元移動完了: ${bot.game.dimension}`);
 }
 
-// 黒曜石確保→建築→着火→突入までを一括実行する。
+function findObsidianCluster(bot, center, maxDistance = 24) {
+  return bot.findBlocks({
+    matching: (b) => b && b.name === OBSIDIAN,
+    point: center,
+    maxDistance,
+    count: 64,
+  }).map((p) => bot.blockAt(p));
+}
+
+// 黒曜石ブロックに囲まれた空洞(隣接ブロックが2つ以上ある空気ブロック)を、
+// フレームの欠損箇所とみなして候補に挙げる。
+function findFrameGaps(bot, obsidianBlocks) {
+  const seen = new Set();
+  const gaps = [];
+  const offsets = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+
+  for (const ob of obsidianBlocks) {
+    for (const [dx, dy, dz] of offsets) {
+      const pos = ob.position.offset(dx, dy, dz);
+      const key = pos.toString();
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const block = bot.blockAt(pos);
+      if (block && block.boundingBox === 'block') continue; // 既に固体
+
+      const solidNeighbors = offsets.filter(([ndx, ndy, ndz]) => {
+        const nb = bot.blockAt(pos.offset(ndx, ndy, ndz));
+        return nb && nb.boundingBox === 'block';
+      }).length;
+
+      if (solidNeighbors >= 2) gaps.push(pos);
+    }
+  }
+  return gaps.slice(0, 12); // ポータル枠は最大でも十数ブロックのため上限を設ける
+}
+
+// 荒廃したポータルを探し、既存の黒曜石フレームの欠損だけを補修して着火する。
+// 0から建築するより資材が少なく済むが、地形に埋もれている等で失敗することもある。
+async function useRuinedPortal(bot, log = () => {}) {
+  const center = await travelToStructure(bot, '#minecraft:ruined_portal', log);
+
+  const activePortal = bot.findBlock({
+    matching: (b) => b && b.name === 'nether_portal',
+    point: center,
+    maxDistance: 24,
+  });
+  if (activePortal) {
+    log('既に起動している荒廃したポータルを発見しました。');
+    return { igniteAt: activePortal.position };
+  }
+
+  const obsidianBlocks = findObsidianCluster(bot, center);
+  if (obsidianBlocks.length < 4) {
+    throw new Error(`荒廃したポータルの黒曜石が少なすぎます(${obsidianBlocks.length}個)。地形に埋もれている可能性があります。`);
+  }
+  log(`荒廃したポータルの黒曜石を ${obsidianBlocks.length} 個発見しました。`);
+
+  const gaps = findFrameGaps(bot, obsidianBlocks);
+  if (gaps.length > 0) {
+    log(`フレームの欠損 ${gaps.length} 箇所を補修します。`);
+    await obtainObsidian(bot, gaps.length, log);
+    for (const pos of gaps) {
+      try {
+        await placeAt(bot, pos, OBSIDIAN);
+      } catch (err) {
+        log(`${pos} の補修に失敗: ${err.message}`);
+      }
+    }
+  }
+
+  const igniteTarget = obsidianBlocks[0];
+  await igniteFrame(bot, igniteTarget, igniteTarget.position, log);
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const portalBlock = bot.findBlock({
+    matching: (b) => b && b.name === 'nether_portal',
+    point: igniteTarget.position,
+    maxDistance: 8,
+  });
+  if (!portalBlock) throw new Error('着火はしましたが、ポータルの発生を確認できませんでした');
+
+  return { igniteAt: portalBlock.position };
+}
+
+// まず荒廃したポータルの利用を試み、見つからない/使えない場合は0から建築する。
 async function buildAndEnterPortal(bot, log = () => {}) {
-  await obtainObsidian(bot, 10, log);
-  const frame = await buildFrame(bot, log);
-  await ignitePortal(bot, frame, log);
+  let frame;
+  try {
+    frame = await useRuinedPortal(bot, log);
+  } catch (err) {
+    log(`荒廃したポータルの利用に失敗、0から建築します: ${err.message}`);
+    await obtainObsidian(bot, 10, log);
+    frame = await buildFrame(bot, log);
+    await ignitePortal(bot, frame, log);
+  }
   await enterPortal(bot, frame, log);
 }
 
 module.exports = {
-  obtainObsidian, buildFrame, ignitePortal, enterPortal, buildAndEnterPortal, gatherFlint, ensureFlintAndSteel,
+  obtainObsidian,
+  buildFrame,
+  ignitePortal,
+  igniteFrame,
+  useRuinedPortal,
+  enterPortal,
+  buildAndEnterPortal,
+  gatherFlint,
+  ensureFlintAndSteel,
 };
