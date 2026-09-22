@@ -3,6 +3,7 @@ const { goto } = require('../utils/navigation');
 const { throwIfCancelled } = require('./cancellation');
 const { ensureTool } = require('./toolProgression');
 const { makeRoom } = require('./chest');
+const { waitUntilCombatClear } = require('../utils/combatLock');
 
 const TOOL_CHECK_INTERVAL = 5; // 何回の採掘試行ごとに道具切れを確認するか
 
@@ -73,6 +74,7 @@ async function mineOre(bot, oreBlockNames, targetCount, opts = {}, log = () => {
 
   while (collected < targetCount && attempts < maxAttempts) {
     throwIfCancelled();
+    await waitUntilCombatClear(); // 応戦中は新しい採掘動作を始めない
     attempts += 1;
     if (toolTier && attempts % TOOL_CHECK_INTERVAL === 0) {
       await ensureTool(bot, toolTier, 'pickaxe', log);

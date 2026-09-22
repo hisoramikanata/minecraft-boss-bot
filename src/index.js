@@ -9,6 +9,7 @@ const config = require('./config');
 const { registerCommands } = require('./commands');
 const warden = require('./bosses/warden');
 const { nearestHostile, fightMob } = require('./utils/combat');
+const { setInCombat } = require('./utils/combatLock');
 
 // 近接で反撃してよい敵Mob。クリーパー(自爆)とウォーデン(即死級ダメージ)は
 // 専用の回避ロジックに任せるため、ここでは対象から除外する。
@@ -115,12 +116,16 @@ function startCombatDefense(bot) {
     if (!threat) return;
 
     handling = true;
+    setInCombat(true);
+    // 採掘・移動などで出ていた既存の移動ゴールを止め、戦闘を最優先にする
+    if (bot.pathfinder) bot.pathfinder.setGoal(null);
     try {
       console.log(`[combat-defense] ${threat.name} を検知、応戦します。`);
       await fightMob(bot, threat, { log: (msg) => console.log(`[combat-defense] ${msg}`), maxDurationMs: 20000 });
     } catch (err) {
       console.log('[combat-defense] error:', err.message);
     } finally {
+      setInCombat(false);
       handling = false;
     }
   }, 1000);

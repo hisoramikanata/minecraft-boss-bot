@@ -2,6 +2,7 @@ const { LOG_NAMES, PLANK_NAMES, anyItemCount } = require('./materials');
 const { craftItem } = require('./craftingHelper');
 const { goto } = require('../utils/navigation');
 const { throwIfCancelled } = require('./cancellation');
+const { waitUntilCombatClear } = require('../utils/combatLock');
 
 function findLogs(bot, maxDistance = 64) {
   return bot.findBlocks({
@@ -16,6 +17,7 @@ async function gatherWood(bot, targetLogCount, log = () => {}) {
   let attempts = 0;
   while (anyItemCount(bot, LOG_NAMES) < targetLogCount && attempts < 30) {
     throwIfCancelled();
+    await waitUntilCombatClear(); // 応戦中は新しい採取動作を始めない
     attempts += 1;
     const logs = findLogs(bot, 32 + attempts * 8);
     if (logs.length === 0) {

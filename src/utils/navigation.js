@@ -1,12 +1,17 @@
 const { goals } = require('mineflayer-pathfinder');
 const { Vec3 } = require('vec3');
+const { waitUntilCombatClear } = require('./combatLock');
 
-function goto(bot, pos, range = 1) {
+// 応戦中(startCombatDefense)は新しい移動ゴールを出さずに待ち、
+// 採掘・探索などの移動が戦闘の邪魔をしないようにする。
+async function goto(bot, pos, range = 1) {
+  await waitUntilCombatClear();
   const goal = new goals.GoalNear(pos.x, pos.y, pos.z, range);
   return bot.pathfinder.goto(goal);
 }
 
-function gotoEntity(bot, entity, range = 3) {
+async function gotoEntity(bot, entity, range = 3) {
+  await waitUntilCombatClear();
   const goal = new goals.GoalFollow(entity, range);
   return bot.pathfinder.goto(goal);
 }
